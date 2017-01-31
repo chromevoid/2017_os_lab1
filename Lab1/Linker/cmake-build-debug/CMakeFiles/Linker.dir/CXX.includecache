@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/chrome/Documents/NYU/2017Spring/Operating System/Lab1/Linker/linker.h
+iostream
+-
+iomanip
+-
+fstream
+-
+string
+-
+sstream
+-
+vector
+-
+
+/Users/chrome/Documents/NYU/2017Spring/Operating System/Lab1/Linker/main.cpp
+linker.h
+/Users/chrome/Documents/NYU/2017Spring/Operating System/Lab1/Linker/linker.h
+
