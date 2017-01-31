@@ -2,22 +2,15 @@
 
 int main(int argc, char const * argv[]) {
     // definition
-    std::string input;
     int module_number;
     std::vector<Module> M;
     std::vector<ND> symbol_table;
 
     // input
     if (argc > 1) {
-        std::ofstream my_file;
-        std::string filename = argv[0];
-        my_file.open(filename);
-        my_file.close();
-        return 0;
+        freopen(argv[1], "r", stdin);
     }
-    else {
-        get_input(module_number, M);
-    }
+    get_input(module_number, M);
 
     // processing
     pass_one(module_number, M, symbol_table);

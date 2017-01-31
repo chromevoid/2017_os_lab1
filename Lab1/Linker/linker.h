@@ -7,7 +7,7 @@
 
 #include <iostream>
 #include <iomanip>
-#include <fstream>
+#include <cstdio>
 #include <string>
 #include <sstream>
 #include <vector>
