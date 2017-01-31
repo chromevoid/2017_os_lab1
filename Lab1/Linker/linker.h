@@ -12,6 +12,52 @@
 #include <sstream>
 #include <vector>
 
+const int MACHINE_SIZE = 200;
+
+class Message{
+    std::vector<std::string> messages;
+public:
+    Message() {}
+    std::string get_messages(int index) {
+        if (is_success(index)) return " Success";
+        return " " + messages[index];
+    }
+    void add_success() {
+        messages.push_back("Success.");
+    }
+    bool is_success(int index) {
+        return "Success." == messages[index];
+    }
+    void change_to_multiply_defined_error(int index) {
+        messages[index] = "Error: This variable is multiply defined; first value used.";
+    }
+    void add_symbol_not_defined_error(std::string s) {
+        messages.push_back("Error: " + s + " is not defined; zero used.");
+    }
+    void add_symbol_not_used_warning(std::string s, int module_number) {
+        std::ostringstream mn;
+        mn << module_number;
+        messages.push_back("Warning: " + s + "was defined in module " + mn.str() + " but never used.");
+    }
+    void add_multiple_variables_used_error() {
+        messages.push_back("Error: Multiple variables used in instruction; all but first ignored.");
+    }
+    void add_def_exceeds_error() {
+        messages.push_back("Error: Definition exceeds module size; first word in module used.");
+    }
+    void add_symbol_exceeds_error(std::string s, int module_number) {
+        std::ostringstream mn;
+        mn << module_number;
+        messages.push_back("Error: Use of " + s + " in module " + mn.str() + " exceeds module size; use ignored.");
+    }
+    void add_relative_exceeds_error() {
+        messages.push_back("Error: Relative address exceeds module size; zero used.");
+    }
+    void add_absolute_exceeds_error() {
+        messages.push_back("Error: Absolute address exceeds machine size; zero used.");
+    }
+};
+
 class ND{ // definition list
     std::string S; // S is the symbol being defined
     int R; // R is the relative address to which the symbol refers
@@ -209,21 +255,43 @@ void get_input(int & module_number, std::vector<Module> & M) {
     }
 }
 
-void pass_one(int module_number, std::vector<Module> & M, std::vector<ND> & symbol_table) {
+int check_symbol_existence(std::vector<ND> symbol_table, std::string symbol) {
+    for (int i = 0; i < symbol_table.size(); i++) {
+        if (symbol == symbol_table[i].get_S()) {
+            return i;
+        }
+    }
+    return -1;
+
+}
+
+void pass_one(int module_number, std::vector<Module> & M, std::vector<ND> & symbol_table, Message & sys_m) {
     int cur_address = 0;
     for (int i = 0; i < module_number; i++) {
         M[i].change_base_address(cur_address);
         cur_address = cur_address + M[i].get_program_number();
         for (int j = 0; j < M[i].get_definition_number(); j++) {
             std::string symbol = M[i].get_definition_list()[j].get_S();
-            int relative_add = M[i].get_definition_list()[j].get_R() + M[i].base_address;
-            ND tmp_nd(symbol, relative_add);
+            int check = check_symbol_existence(symbol_table, symbol);
+            std::cout << check;
+            if (check > -1) {
+                sys_m.change_to_multiply_defined_error(check);
+                continue;
+            }
+            int relative_add = M[i].get_definition_list()[j].get_R();
+            int absolute_add = M[i].get_definition_list()[j].get_R() + M[i].base_address;
+            if (relative_add >= M[i].get_program_number()) {
+                sys_m.add_def_exceeds_error();
+                absolute_add = 0;
+            }
+            else sys_m.add_success();
+            ND tmp_nd(symbol, absolute_add);
             symbol_table.push_back(tmp_nd);
         }
     }
 }
 
-void pass_two(int module_number, std::vector<Module> & M, std::vector<ND> symbol_table) {
+void pass_two(int module_number, std::vector<Module> & M, std::vector<ND> symbol_table, Message & sys_m) {
     for (int i = 0; i < module_number; i++) {
         // process type 'E'
         for (int j = 0; j < M[i].get_use_number(); j++) {
@@ -246,13 +314,33 @@ void pass_two(int module_number, std::vector<Module> & M, std::vector<ND> symbol
                 }
             }
         }
-        // process type 'R'
+
         for (int j = 0; j < M[i].get_program_number(); j++) {
             char t = M[i].get_program_list()[j].get_T();
-            if (t == 'R') {
+            if (t == 'I') {
+                sys_m.add_success();
+            }
+            else if (t == 'A') {
+                int w = M[i].get_program_list()[j].get_W();
+                if (w % 1000 >= MACHINE_SIZE) {
+                    sys_m.add_absolute_exceeds_error();
+                    M[i].get_program_list()[j].change_W(w / 1000 * 1000);
+                }
+                else sys_m.add_success();
+            }
+            else if (t == 'R') {
                 int w = M[i].get_program_list()[j].get_W();
                 w = w + M[i].get_base_address();
-                M[i].get_program_list()[j].change_W(w);
+                if (w % 1000 >= M[i].get_program_number()) {
+                    sys_m.add_relative_exceeds_error();
+                    M[i].get_program_list()[j].change_W(w / 1000 * 1000);
+                }
+                else {
+                    sys_m.add_success();
+                    M[i].get_program_list()[j].change_W(w);
+                }
+            }
+            else {
             }
         }
     }
