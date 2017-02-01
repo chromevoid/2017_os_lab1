@@ -1,6 +1,6 @@
 #include "linker.h"
 
-int main(int argc, char const * argv[]) {
+void process() {
     // definition
     int module_number;
     std::vector<Module> M;
@@ -9,9 +9,6 @@ int main(int argc, char const * argv[]) {
     Message system_message;
 
     // input
-    if (argc > 2) {
-        freopen(argv[1], "r", stdin);
-    }
     get_input(module_number, M);
 
     // processing
@@ -41,6 +38,23 @@ int main(int argc, char const * argv[]) {
     std::cout << std::endl;
     for (int i = 0; i < usage_message.size(); i++) {
         std::cout << usage_message[i] << std::endl;
+    }
+}
+
+int main(int argc, char const * argv[]) {
+    // input
+    if (argc > 1) {
+        for (int i = 1; i < argc; i++) {
+            std::cin.clear();
+            std::cin.sync();
+            freopen(argv[i], "r", stdin);
+            process();
+        }
+    }
+    else {
+        std::cin.clear();
+        std::cin.sync();
+        process();
     }
 
     return 0;
