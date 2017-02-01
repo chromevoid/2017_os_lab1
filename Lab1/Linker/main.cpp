@@ -5,6 +5,7 @@ int main(int argc, char const * argv[]) {
     int module_number;
     std::vector<Module> M;
     std::vector<ND> symbol_table;
+    std::vector<std::string> usage_message;
     Message system_message;
 
     // input
@@ -15,7 +16,7 @@ int main(int argc, char const * argv[]) {
 
     // processing
     pass_one(module_number, M, symbol_table, system_message);
-    pass_two(module_number, M, symbol_table, system_message);
+    pass_two(module_number, M, symbol_table, usage_message, system_message);
 
     // print symbol table
     std::cout << "Symbol Table\n";
@@ -34,6 +35,12 @@ int main(int argc, char const * argv[]) {
             std::cout << std::setw(4) << std::left << out_address.str() << M[i].get_program_list()[j].get_W()
                       << M[i].get_program_list()[j].get_message() << std::endl;
         }
+    }
+
+    // print usage message
+    std::cout << std::endl;
+    for (int i = 0; i < usage_message.size(); i++) {
+        std::cout << usage_message[i] << std::endl;
     }
 
     return 0;

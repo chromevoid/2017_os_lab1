@@ -29,7 +29,7 @@ public:
     std::string add_symbol_not_used_warning(std::string s, int module_number) {
         std::ostringstream mn;
         mn << module_number;
-        return " Warning: " + s + "was defined in module " + mn.str() + " but never used.";
+        return "Warning: " + s + "was defined in module " + mn.str() + " but never used.";
     }
     std::string add_multiple_variables_used_error() {
         return " Error: Multiple variables used in instruction; all but first ignored.";
@@ -40,7 +40,7 @@ public:
     std::string add_symbol_exceeds_error(std::string s, int module_number) {
         std::ostringstream mn;
         mn << module_number;
-        return " Error: Use of " + s + " in module " + mn.str() + " exceeds module size; use ignored.";
+        return "Error: Use of " + s + " in module " + mn.str() + " exceeds module size; use ignored.";
     }
     std::string add_relative_exceeds_error() {
         return " Error: Relative address exceeds module size; zero used.";
@@ -289,7 +289,7 @@ void pass_one(int module_number, std::vector<Module> & M, std::vector<ND> & symb
             int absolute_add = M[i].get_definition_list()[j].get_R() + M[i].get_base_address();
             if (relative_add >= M[i].get_program_number()) {
                 message = sys_m.add_def_exceeds_error();
-                absolute_add = 0;
+                absolute_add = 0 + M[i].get_base_address();
             }
             else message = sys_m.add_success();
             ND tmp_nd(symbol, absolute_add, message);
@@ -298,31 +298,24 @@ void pass_one(int module_number, std::vector<Module> & M, std::vector<ND> & symb
     }
 }
 
-void pass_two(int module_number, std::vector<Module> & M, std::vector<ND> symbol_table, Message sys_m) {
+void pass_two(int module_number, std::vector<Module> & M, std::vector<ND> symbol_table,
+              std::vector<std::string> & usage_message, Message sys_m) {
     for (int i = 0; i < module_number; i++) {
-        // process type 'E'
+        bool use_exceed = false;
+        // process symbol use warning and error
         for (int j = 0; j < M[i].get_use_number(); j++) {
+            // get the symbol from the use list
             std::string symbol = M[i].get_use_list()[j].get_S();
-            int def_address = -1;
-            for (int k = 0; k < symbol_table.size(); k++) {
-                if (symbol == symbol_table[k].get_S()) {
-                    def_address = symbol_table[k].get_R();
-                    break;
+            // get the usage vector of the symbol from the use list
+            std::vector<int> relative_add = M[i].get_use_list()[j].get_R();
+            // in the usage vector, check whether the usage exceeds the module size
+            for (int k = 0; k < relative_add.size() && relative_add[k] != -1; k++) {
+                if (relative_add[k] >= M[i].get_program_number()) {
+                    usage_message.push_back(sys_m.add_symbol_exceeds_error(symbol, i));
                 }
             }
-            if (def_address > M[i].get_program_number()) {
-                M[i].get_program_list()[j]
-            }
-            if (def_address != -1) {
-                for (int k = 0; k < M[i].get_use_list()[j].get_R().size(); k++) {
-                    int symbol_use_index = M[i].get_use_list()[j].get_R()[k];
-                    if (symbol_use_index != -1 and M[i].get_program_list()[symbol_use_index].get_T() == 'E') {
-                        int w = M[i].get_program_list()[symbol_use_index].get_W();
-                        w = w / 1000 * 1000 + def_address;
-                        M[i].get_program_list()[symbol_use_index].change_W(w);
-                    }
-                }
-            }
+
+//            usage_message.push_back(sys_m.add_symbol_not_used_warning(symbol, i));
         }
 
         for (int j = 0; j < M[i].get_program_number(); j++) {
@@ -349,6 +342,55 @@ void pass_two(int module_number, std::vector<Module> & M, std::vector<ND> symbol
                     w = w + M[i].get_base_address();
                     M[i].get_program_list()[j].change_W(w);
                 }
+            }
+            else if (t == 'E') {
+                bool address_used = false;
+
+                // in the use list, find which symbol uses the current address
+                for (int k = 0; k < M[i].get_use_number(); k++) {
+                    // use_list_r: the relative address vector of the kth NU in the use list
+                    std::vector<int> use_list_r = M[i].get_use_list()[k].get_R();
+                    // in the relative address vector, find the relative address that equals current address
+                    for (int l = 0; l < use_list_r.size(); l++) {
+                        int current_address = use_list_r[l];
+                        if (current_address == -1) {
+                            break;
+                        }
+                        // if relative address equals current address
+                        if (j == current_address) {
+                            // if the address is already used, error message
+                            if (address_used) {
+                                M[i].get_program_list()[j].change_message(sys_m.add_multiple_variables_used_error());
+                                continue;
+                            }
+                            // if the address is not used, get the symbol fo the kth NU in the use list
+                            std::string use_list_s = M[i].get_use_list()[k].get_S();
+                            // in the symbol_table, find the symbol
+                            for (int index = 0; index < symbol_table.size(); index++) {
+                                // if symbol is found
+                                if (symbol_table[index].get_S() == use_list_s) {
+                                    // change the address
+                                    int absolute_address = symbol_table[index].get_R();
+                                    int w = M[i].get_program_list()[j].get_W();
+                                    w = w / 1000 * 1000 + absolute_address;
+                                    M[i].get_program_list()[j].change_message(sys_m.add_success());
+                                    M[i].get_program_list()[j].change_W(w);
+                                    // now the address is used
+                                    address_used = true;
+                                    break;
+                                }
+                            }
+                            // if the address is not used, then the symbol is not found in the symbol table
+                            // so the symbol is used but not defined
+                            if (!address_used) {
+                                M[i].get_program_list()[j].change_message(sys_m.add_symbol_not_defined_error(use_list_s));
+                                int w = M[i].get_program_list()[j].get_W();
+                                M[i].get_program_list()[j].change_W(w / 1000 * 1000);
+                            }
+                        }
+                    }
+                }
+
             }
             else {
                 continue;
