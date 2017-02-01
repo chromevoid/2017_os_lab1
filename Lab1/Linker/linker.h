@@ -58,6 +58,23 @@ public:
     }
 };
 
+template <class T>
+class OutputTable {
+    std::vector<T> vector_t;
+    std::string<vector> error_message;
+public:
+    OutputTable(std::vecter<T> vt, std::string em) {
+        vector_t = vt;
+        error_message = em;
+    }
+    void add_item(T t) {
+        vector_t.push_back(t);
+    }
+    void change_error_message(std::string new_em) {
+        error_message = new_em;
+    }
+};
+
 class ND{ // definition list
     std::string S; // S is the symbol being defined
     int R; // R is the relative address to which the symbol refers
