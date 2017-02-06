@@ -335,7 +335,8 @@ void pass_one(int module_number, std::vector<Module> & M, std::vector<ST> & symb
                 absolute_add = 0 + M[i].get_base_address();
             }
             else message = sys_m.add_success();
-            ST tmp_st(symbol, absolute_add, i, message);
+            // module count starts at 1
+            ST tmp_st(symbol, absolute_add, i + 1, message);
             symbol_table.push_back(tmp_st);
         }
     }
