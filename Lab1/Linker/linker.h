@@ -29,7 +29,7 @@ public:
     std::string add_symbol_not_used_warning(std::string s, int module_number) {
         std::ostringstream mn;
         mn << module_number;
-        return "Warning: " + s + "was defined in module " + mn.str() + " but never used.";
+        return "Warning: " + s + " was defined in module " + mn.str() + " but never used.";
     }
     std::string add_multiple_variables_used_error() {
         return " Error: Multiple variables used in instruction; all but first ignored.";
@@ -50,15 +50,62 @@ public:
     }
 };
 
+class ST{ // symbol table
+    std::string S; // S is the symbol being defined
+    int A; // A is the absolute address to which the symbol refers
+    int M; // M is the module number where the S is defined
+    bool used; // weather the symbol is used
+    std::string message;
+public:
+    ST(std::string s, int a, int m_number, std::string m = "") {
+        S = s;
+        A = a;
+        M = m_number;
+        used = false;
+        message = m;
+    }
+    std::string get_S() {
+        return S;
+    }
+    int get_A() {
+        return A;
+    }
+    int get_M() {
+        return M;
+    }
+    bool set_True() {
+        used = true;
+        return used;
+    }
+    bool set_False() {
+        used = false;
+        return used;
+    }
+    bool get_used() {
+        return used;
+    }
+    std::string get_message() {
+        if (message == " Success.")
+            return "";
+        return message;
+    }
+    void change_message(std::string new_m) {
+        message = new_m;
+    }
+    friend std::ostream &operator << (std::ostream & out, ST & st);
+    friend std::ostream &operator << (std::ostream & out, ST & st) {
+        out << st.S << "=" << st.A;
+        return out;
+    }
+};
+
 class ND{ // definition list
     std::string S; // S is the symbol being defined
     int R; // R is the relative address to which the symbol refers
-    std::string message;
 public:
-    ND(std::string s, int r, std::string m = "") {
+    ND(std::string s, int r) {
         S = s;
         R = r;
-        message = m;
     }
     std::string get_S() {
         return S;
@@ -66,15 +113,9 @@ public:
     int get_R() {
         return R;
     }
-    std::string get_message() {
-        return message;
-    }
-    void change_message(std::string new_m) {
-        message = new_m;
-    }
     friend std::ostream &operator << (std::ostream & out, ND & nd);
     friend std::ostream &operator << (std::ostream & out, ND & nd) {
-        out << nd.S << "=" << nd.R;
+        out << nd.S << " " << nd.R;
         return out;
     }
 };
@@ -120,6 +161,8 @@ public:
         return W;
     }
     std::string get_message() {
+        if (message == " Success.")
+            return "";
         return message;
     }
     void change_W(int new_w) {
@@ -262,7 +305,7 @@ void get_input(int & module_number, std::vector<Module> & M) {
     }
 }
 
-int check_symbol_existence(std::vector<ND> symbol_table, std::string symbol) {
+int check_symbol_existence(std::vector<ST> symbol_table, std::string symbol) {
     for (int i = 0; i < symbol_table.size(); i++) {
         if (symbol == symbol_table[i].get_S()) {
             return i;
@@ -272,7 +315,7 @@ int check_symbol_existence(std::vector<ND> symbol_table, std::string symbol) {
 
 }
 
-void pass_one(int module_number, std::vector<Module> & M, std::vector<ND> & symbol_table, Message sys_m) {
+void pass_one(int module_number, std::vector<Module> & M, std::vector<ST> & symbol_table, Message sys_m) {
     int cur_address = 0;
     for (int i = 0; i < module_number; i++) {
         M[i].change_base_address(cur_address);
@@ -292,32 +335,40 @@ void pass_one(int module_number, std::vector<Module> & M, std::vector<ND> & symb
                 absolute_add = 0 + M[i].get_base_address();
             }
             else message = sys_m.add_success();
-            ND tmp_nd(symbol, absolute_add, message);
-            symbol_table.push_back(tmp_nd);
+            ST tmp_st(symbol, absolute_add, i, message);
+            symbol_table.push_back(tmp_st);
         }
     }
 }
 
-void pass_two(int module_number, std::vector<Module> & M, std::vector<ND> symbol_table,
+void pass_two(int module_number, std::vector<Module> & M, std::vector<ST> symbol_table,
               std::vector<std::string> & usage_message, Message sys_m) {
     for (int i = 0; i < module_number; i++) {
-        bool use_exceed = false;
         // process symbol use warning and error
         for (int j = 0; j < M[i].get_use_number(); j++) {
             // get the symbol from the use list
             std::string symbol = M[i].get_use_list()[j].get_S();
             // get the usage vector of the symbol from the use list
             std::vector<int> relative_add = M[i].get_use_list()[j].get_R();
+
             // in the usage vector, check whether the usage exceeds the module size
             for (int k = 0; k < relative_add.size() && relative_add[k] != -1; k++) {
                 if (relative_add[k] >= M[i].get_program_number()) {
                     usage_message.push_back(sys_m.add_symbol_exceeds_error(symbol, i));
+                    continue;
+                }
+                // if the usage doesn't exceed the module size
+                // check if the symbol exists
+                int check = check_symbol_existence(symbol_table, symbol);
+                // if the symbol exists, mark the symbol
+                if (check > -1) {
+                    symbol_table[check].set_True();
+                    continue;
                 }
             }
-
-//            usage_message.push_back(sys_m.add_symbol_not_used_warning(symbol, i));
         }
 
+        // process other error message
         for (int j = 0; j < M[i].get_program_number(); j++) {
             char t = M[i].get_program_list()[j].get_T();
             if (t == 'I') {
@@ -363,25 +414,27 @@ void pass_two(int module_number, std::vector<Module> & M, std::vector<ND> symbol
                                 M[i].get_program_list()[j].change_message(sys_m.add_multiple_variables_used_error());
                                 continue;
                             }
-                            // if the address is not used, get the symbol fo the kth NU in the use list
+                            // if the address is not used, get the symbol of the kth NU in the use list
                             std::string use_list_s = M[i].get_use_list()[k].get_S();
                             // in the symbol_table, find the symbol
                             for (int index = 0; index < symbol_table.size(); index++) {
                                 // if symbol is found
                                 if (symbol_table[index].get_S() == use_list_s) {
                                     // change the address
-                                    int absolute_address = symbol_table[index].get_R();
+                                    int absolute_address = symbol_table[index].get_A();
                                     int w = M[i].get_program_list()[j].get_W();
                                     w = w / 1000 * 1000 + absolute_address;
                                     M[i].get_program_list()[j].change_message(sys_m.add_success());
                                     M[i].get_program_list()[j].change_W(w);
+                                    // mark the symbol is used
+                                    symbol_table[index].set_True();
                                     // now the address is used
                                     address_used = true;
                                     break;
                                 }
                             }
-                            // if the address is not used, then the symbol is not found in the symbol table
-                            // so the symbol is used but not defined
+                            // if the address is not used, and the symbol is not found in the symbol table
+                            // then the symbol is used but not defined
                             if (!address_used) {
                                 M[i].get_program_list()[j].change_message(sys_m.add_symbol_not_defined_error(use_list_s));
                                 int w = M[i].get_program_list()[j].get_W();
@@ -396,6 +449,12 @@ void pass_two(int module_number, std::vector<Module> & M, std::vector<ND> symbol
                 continue;
             }
         }
+    }
+
+    for (int i = 0; i < symbol_table.size(); i++) {
+        if (symbol_table[i].get_used())
+            continue;
+        usage_message.push_back(sys_m.add_symbol_not_used_warning(symbol_table[i].get_S(), symbol_table[i].get_M()));
     }
 }
 

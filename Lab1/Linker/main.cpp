@@ -4,7 +4,7 @@ void process() {
     // definition
     int module_number;
     std::vector<Module> M;
-    std::vector<ND> symbol_table;
+    std::vector<ST> symbol_table;
     std::vector<std::string> usage_message;
     Message system_message;
 
@@ -39,6 +39,7 @@ void process() {
     for (int i = 0; i < usage_message.size(); i++) {
         std::cout << usage_message[i] << std::endl;
     }
+    std::cout << std::endl;
 }
 
 int main(int argc, char const * argv[]) {
