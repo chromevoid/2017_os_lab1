@@ -92,8 +92,7 @@ public:
     void change_message(std::string new_m) {
         message = new_m;
     }
-    friend std::ostream &operator << (std::ostream & out, ST & st);
-    friend std::ostream &operator << (std::ostream & out, ST & st) {
+    friend std::ostream &operator << (std::ostream & out, const ST & st) {
         out << st.S << "=" << st.A;
         return out;
     }
@@ -113,8 +112,7 @@ public:
     int get_R() {
         return R;
     }
-    friend std::ostream &operator << (std::ostream & out, ND & nd);
-    friend std::ostream &operator << (std::ostream & out, ND & nd) {
+    friend std::ostream &operator << (std::ostream & out, const ND & nd) {
         out << nd.S << " " << nd.R;
         return out;
     }
@@ -134,8 +132,7 @@ public:
     std::vector<int> get_R() {
         return R;
     }
-    friend std::ostream &operator << (std::ostream & out, NU & nu);
-    friend std::ostream &operator << (std::ostream & out, NU & nu) {
+    friend std::ostream &operator << (std::ostream & out, const NU & nu) {
         out << nu.S;
         for (int i = 0; i < nu.R.size(); i++) {
             out << " " << nu.R[i];
@@ -171,8 +168,7 @@ public:
     void change_message(std::string new_m) {
         message = new_m;
     }
-    friend std::ostream &operator << (std::ostream & out, NT & nt);
-    friend std::ostream &operator << (std::ostream & out, NT & nt) {
+    friend std::ostream &operator << (std::ostream & out, const NT & nt) {
         out << nt.T << "=" << nt.W;
         return out;
     }
@@ -224,9 +220,6 @@ public:
     void change_base_address(int new_ba) {
         base_address = new_ba;
     }
-    friend std::ostream &operator << (std::ostream & out, Module & M);
-
-private:
     friend std::ostream &operator << (std::ostream & out, Module & M) {
         out << M.definition_number;
         for (int i = 0; i < M.definition_number; i++) {
